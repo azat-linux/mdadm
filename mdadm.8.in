@@ -123,7 +123,7 @@ missing, spare, or failed drives, so there is nothing to monitor.
 Grow (or shrink) an array, or otherwise reshape it in some way.
 Currently supported growth options including changing the active size
 of component devices and changing the number of active devices in
-Linear and RAID levels 0/1/4/5/6,
+Linear and RAID levels 0/1/4/5/6/10,
 changing the RAID level between 0, 1, 5, and 6, and between 0 and 10,
 changing the chunk size and layout for RAID 0,4,5,6,10 as well as adding or
 removing a write-intent bitmap and changing the array's consistency policy.
