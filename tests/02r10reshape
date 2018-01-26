@@ -1,0 +1,66 @@
+
+# create a 4-disk raid10 array, make it 8-disk array and than shrink it back
+#
+# This SHOULD fail:
+# - before mdadm 3.3 and linux 3.5
+# - with metadata v0.90
+#
+# This also fails:
+# - with metadata 1.0 with "mdadm: Insufficient head-space for reshape on /dev/loop1" error
+# - and external bitmap mode
+
+function get_component_size() { cat /sys/block/$1/md/component_size; }
+
+function raid10_reshape()
+{
+    local layout=$1 metadata=$2 bitmap=$3
+    shift 3
+
+    local m=2 cm=1
+
+    echo "Checking layout=$layout/metadata=$metadata"
+
+    # 4 disks
+    mdadm -CR $md0 --bitmap $bitmap --metadata $metadata --level raid10 --layout $layout --raid-disks 4 $dev1 $dev2 $dev3 $dev4
+    check wait
+    check state UUUU
+    check raid10
+    testdev $md0 $m $mdsize1 $[512*cm]
+
+    # growing array to 8 disks
+    mdadm $md0 --add $dev8 $dev9 $dev10 $dev11
+    mdadm $md0 --grow --raid-devices 8
+    check wait
+    check state UUUUUUUU
+    check raid10
+    testdev $md0 $m $[mdsize1*2] $[512*cm]
+
+    # reducing array to 4 disks again
+    dsize=$(get_component_size md0)
+    mdadm $md0 --grow --array-size $[dsize*2]
+    mdadm $md0 --grow --raid-devices 4
+    check wait
+    mdadm $md0 --remove $dev8 $dev9 $dev10 $dev11
+    check state UUUU
+    check raid10
+    testdev $md0 $m $mdsize1 $[512*cm]
+}
+
+function run_test()
+{
+    "$@"
+    mdadm -S $md0
+}
+function main()
+{
+    local layout metadata bitmap
+
+    for layout in n2 o2; do
+        for metadata in 1.1 1.2; do
+            for bitmap in none internal; do
+                run_test raid10_reshape $layout $metadata $bitmap
+            done
+        done
+    done
+}
+main "$@"
